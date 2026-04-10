@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FaceID — Gender Classifier</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0c0c0d;
+    --bg2: #141416;
+    --bg3: #1c1c20;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --accent: #7c6af5;
+    --accent2: #a593ff;
+    --accent-glow: rgba(124,106,245,0.18);
+    --text: #f0efed;
+    --text2: #8d8b94;
+    --text3: #5a5862;
+    --male: #4e9de8;
+    --female: #e86fa4;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ----- HEADER ----- */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(12,12,13,0.9);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 34px;
+    height: 34px;
+    background: var(--accent);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-icon svg { width: 18px; height: 18px; fill: white; }
+
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .logo-sub {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  nav {
+    display: flex;
+    gap: 4px;
+  }
+
+  nav button {
+    background: none;
+    border: none;
+    color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+
+  nav button:hover { background: var(--bg3); color: var(--text); }
+  nav button.active { background: var(--bg3); color: var(--accent2); }
+
+  /* ----- MAIN LAYOUT ----- */
+  .main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem;
+  }
+
+  .hero {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-glow);
+    border: 1px solid rgba(124,106,245,0.25);
+    border-radius: 100px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--accent2);
+    letter-spacing: 0.05em;
+    margin-bottom: 1.2rem;
+  }
+
+  .hero-dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: 0.8rem;
+    background: linear-gradient(135deg, #f0efed 0%, #8d8b94 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero p {
+    color: var(--text2);
+    font-size: 1rem;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* ----- TABS ----- */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 2rem;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 8px 22px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+
+  .tab-btn:hover { color: var(--text); }
+
+  .tab-btn.active {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border2);
+  }
+
+  /* ----- SECTION PANELS ----- */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ----- UPLOAD AREA ----- */
+  .upload-zone {
+    border: 1.5px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.22s;
+    background: var(--bg2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 110%, var(--accent-glow), transparent);
+    pointer-events: none;
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: var(--bg3);
+  }
+
+  .upload-icon {
+    width: 56px; height: 56px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.2rem;
+  }
+
+  .upload-icon svg { width: 26px; height: 26px; stroke: var(--accent2); fill: none; stroke-width: 1.5; }
+
+  .upload-zone h3 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .upload-zone p {
+    color: var(--text3);
+    font-size: 13px;
+  }
+
+  .upload-zone input[type=file] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ----- GRID OF IMAGES ----- */
+  .image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+    margin-top: 2rem;
+  }
+
+  .img-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.18s, border-color 0.18s;
+    cursor: pointer;
+  }
+
+  .img-card:hover { transform: translateY(-2px); border-color: var(--border2); }
+
+  .img-card img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .img-card .info {
+    padding: 10px 12px 12px;
+  }
+
+  .img-card .filename {
+    font-size: 11.5px;
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 6px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 100px;
+    letter-spacing: 0.02em;
+  }
+
+  .badge-male {
+    background: rgba(78,157,232,0.12);
+    color: #7ab9f0;
+    border: 1px solid rgba(78,157,232,0.25);
+  }
+
+  .badge-female {
+    background: rgba(232,111,164,0.12);
+    color: #f09ec3;
+    border: 1px solid rgba(232,111,164,0.25);
+  }
+
+  .badge-loading {
+    background: rgba(255,255,255,0.05);
+    color: var(--text3);
+    border: 1px solid var(--border);
+  }
+
+  .confidence-bar {
+    margin-top: 7px;
+    height: 3px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .confidence-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  .confidence-fill.male { background: var(--male); }
+  .confidence-fill.female { background: var(--female); }
+
+  .confidence-label {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 4px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ----- ACTION BAR ----- */
+  .action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .action-count {
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    border: none;
+    transition: all 0.18s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+
+  .btn-primary:hover { background: #6a58e0; transform: translateY(-1px); }
+  .btn-primary:disabled { background: var(--bg3); color: var(--text3); cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    background: var(--bg3);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  .btn-ghost:hover { color: var(--text); border-color: var(--border2); }
+
+  .btn svg { width: 15px; height: 15px; }
+
+  /* ----- STATS / ABOUT PANEL ----- */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem 1.4rem;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1.8rem;
+    color: var(--text);
+    letter-spacing: -0.03em;
+  }
+
+  .stat-sub {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 4px;
+  }
+
+  /* ----- ARCH DIAGRAM ----- */
+  .arch {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .arch h3 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text2);
+    margin-bottom: 1.4rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 11.5px;
+  }
+
+  .arch-layers {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+
+  .layer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 80px;
+  }
+
+  .layer-box {
+    width: 70px;
+    height: 50px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-align: center;
+    line-height: 1.3;
+    font-weight: 500;
+  }
+
+  .layer-name {
+    font-size: 10.5px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    text-align: center;
+  }
+
+  .arrow {
+    color: var(--text3);
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: -16px;
+  }
+
+  .l-input { background: rgba(124,106,245,0.1); border: 1px solid rgba(124,106,245,0.25); color: var(--accent2); }
+  .l-conv  { background: rgba(78,157,232,0.1); border: 1px solid rgba(78,157,232,0.25); color: #7ab9f0; }
+  .l-pool  { background: rgba(255,255,255,0.04); border: 1px solid var(--border2); color: var(--text2); }
+  .l-fc    { background: rgba(232,111,164,0.1); border: 1px solid rgba(232,111,164,0.25); color: #f09ec3; }
+  .l-out   { background: rgba(99,194,82,0.1); border: 1px solid rgba(99,194,82,0.25); color: #8dcf79; }
+
+  /* ----- RESULT DONUT ----- */
+  .result-panel {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .donut-wrap { position: relative; width: 140px; height: 140px; flex-shrink: 0; }
+  .donut-wrap svg { width: 140px; height: 140px; transform: rotate(-90deg); }
+  .donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .donut-pct {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .donut-lbl { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+
+  /* ----- EMPTY STATE ----- */
+  .empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text3);
+    font-size: 13.5px;
+  }
+
+  /* ----- SPINNER ----- */
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-top-color: var(--accent2);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ----- FOOTER ----- */
+  footer {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text3);
+    font-size: 12.5px;
+    border-top: 1px solid var(--border);
+    margin-top: 4rem;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ----- RESPONSIVE ----- */
+  @media (max-width: 640px) {
+    .main { padding: 1.5rem 1rem; }
+    header { padding: 1rem; }
+    .hero h1 { font-size: 1.8rem; }
+    nav { display: none; }
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+    </div>
+    <div>
+      <div class="logo-text">FaceID</div>
+      <div class="logo-sub">Gender Classifier</div>
+    </div>
+  </div>
+  <nav>
+    <button class="active" onclick="showTab('classify')">Classify</button>
+    <button onclick="showTab('about')">About</button>
+  </nav>
+</header>
+
+<div class="main">
+
+  <div class="hero">
+    <div class="hero-tag"><div class="hero-dot"></div>PyTorch CNN · Binary Classification</div>
+    <h1>Face Gender<br>Classification</h1>
+    <p>Upload face images and get instant gender predictions powered by a custom-trained CNN.</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchPanel('classify')">Classify Images</button>
+    <button class="tab-btn" onclick="switchPanel('about')">Model Info</button>
+  </div>
+
+  <!-- ===== CLASSIFY PANEL ===== -->
+  <div class="panel active" id="panel-classify">
+
+    <div class="upload-zone" id="dropzone">
+      <input type="file" id="file-input" accept="image/*" multiple onchange="handleFiles(this.files)"/>
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <h3>Drop face images here</h3>
+      <p>Supports JPG, PNG, AVIF, WEBP · Multiple files allowed</p>
+    </div>
+
+    <div id="results-area" style="display:none;">
+      <div class="image-grid" id="image-grid"></div>
+
+      <div class="action-bar">
+        <span class="action-count" id="action-count"></span>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-ghost" onclick="clearAll()">
+            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            Clear all
+          </button>
+          <button class="btn btn-primary" id="run-btn" onclick="runAll()">
+            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
+            Run predictions
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary bar -->
+      <div id="summary" style="display:none; margin-top:2rem;">
+        <div style="background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:1.6rem 2rem;">
+          <div style="font-family:'DM Mono',monospace; font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.06em; margin-bottom:1.2rem;">Results summary</div>
+          <div class="result-panel">
+            <div class="donut-wrap">
+              <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="52" fill="none" stroke="var(--bg3)" stroke-width="12"/>
+                <circle id="donut-male" cx="60" cy="60" r="52" fill="none" stroke="var(--male)" stroke-width="12" stroke-dasharray="0 327" style="transition:stroke-dasharray 0.8s cubic-bezier(0.16,1,0.3,1)"/>
+              </svg>
+              <div class="donut-center">
+                <div class="donut-pct" id="donut-pct" style="color:var(--male)">0%</div>
+                <div class="donut-lbl">male</div>
+              </div>
+            </div>
+            <div style="flex:1; display:flex; gap:1.2rem; flex-wrap:wrap;">
+              <div class="stat-card" style="flex:1; min-width:120px;">
+                <div class="stat-label">Male</div>
+                <div class="stat-value" id="sum-male" style="color:var(--male)">—</div>
+                <div class="stat-sub" id="sum-male-pct">—</div>
+              </div>
+              <div class="stat-card" style="flex:1; min-width:120px;">
+                <div class="stat-label">Female</div>
+                <div class="stat-value" id="sum-female" style="color:var(--female)">—</div>
+                <div class="stat-sub" id="sum-female-pct">—</div>
+              </div>
+              <div class="stat-card" style="flex:1; min-width:120px;">
+                <div class="stat-label">Total</div>
+                <div class="stat-value" id="sum-total">—</div>
+                <div class="stat-sub">images processed</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== ABOUT PANEL ===== -->
+  <div class="panel" id="panel-about">
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Architecture</div>
+        <div class="stat-value" style="font-size:1.2rem;">CNN</div>
+        <div class="stat-sub">Custom 3-block convolutional network</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Input size</div>
+        <div class="stat-value">224²</div>
+        <div class="stat-sub">224 × 224 px RGB images</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Classes</div>
+        <div class="stat-value">2</div>
+        <div class="stat-sub">Male · Female</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Framework</div>
+        <div class="stat-value" style="font-size:1.2rem;">PyTorch</div>
+        <div class="stat-sub">CUDA / CPU inference</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Optimizer</div>
+        <div class="stat-value" style="font-size:1.2rem;">Adam</div>
+        <div class="stat-sub">lr = 0.001</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Loss</div>
+        <div class="stat-value" style="font-size:1.2rem;">CE</div>
+        <div class="stat-sub">CrossEntropyLoss</div>
+      </div>
+    </div>
+
+    <div class="arch">
+      <h3>Model Architecture</h3>
+      <div class="arch-layers">
+
+        <div class="layer">
+          <div class="layer-box l-input">224×224<br>×3</div>
+          <div class="layer-name">Input</div>
+        </div>
+
+        <div class="arrow">›</div>
+
+        <div class="layer">
+          <div class="layer-box l-conv">Conv2d<br>3→32</div>
+          <div class="layer-name">Block 1</div>
+        </div>
+        <div class="layer" style="gap:3px; min-width:40px; align-items:flex-start; margin-top:0;">
+          <div style="font-size:9.5px; color:var(--text3); font-family:'DM Mono',monospace; line-height:2.8;">BN+ReLU<br>MaxPool</div>
+        </div>
+
+        <div class="arrow">›</div>
+
+        <div class="layer">
+          <div class="layer-box l-conv">Conv2d<br>32→64</div>
+          <div class="layer-name">Block 2</div>
+        </div>
+        <div class="layer" style="gap:3px; min-width:40px; align-items:flex-start; margin-top:0;">
+          <div style="font-size:9.5px; color:var(--text3); font-family:'DM Mono',monospace; line-height:2.8;">BN+ReLU<br>MaxPool</div>
+        </div>
+
+        <div class="arrow">›</div>
+
+        <div class="layer">
+          <div class="layer-box l-conv">Conv2d<br>64→128</div>
+          <div class="layer-name">Block 3</div>
+        </div>
+        <div class="layer" style="gap:3px; min-width:40px; align-items:flex-start; margin-top:0;">
+          <div style="font-size:9.5px; color:var(--text3); font-family:'DM Mono',monospace; line-height:2.8;">BN+ReLU<br>MaxPool</div>
+        </div>
+
+        <div class="arrow">›</div>
+
+        <div class="layer">
+          <div class="layer-box l-pool">Flatten<br>→100352</div>
+          <div class="layer-name">Flatten</div>
+        </div>
+
+        <div class="arrow">›</div>
+
+        <div class="layer">
+          <div class="layer-box l-fc">FC<br>→256</div>
+          <div class="layer-name">Dense + Dropout 0.5</div>
+        </div>
+
+        <div class="arrow">›</div>
+
+        <div class="layer">
+          <div class="layer-box l-out">Softmax<br>2</div>
+          <div class="layer-name">Output</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="arch">
+      <h3>Data Augmentation (Train)</h3>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:0.5rem;">
+        <span style="font-family:'DM Mono',monospace; font-size:12px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:4px 12px; color:var(--text2);">RandomHorizontalFlip p=0.5</span>
+        <span style="font-family:'DM Mono',monospace; font-size:12px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:4px 12px; color:var(--text2);">RandomRotation 15°</span>
+        <span style="font-family:'DM Mono',monospace; font-size:12px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:4px 12px; color:var(--text2);">ColorJitter</span>
+        <span style="font-family:'DM Mono',monospace; font-size:12px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:4px 12px; color:var(--text2);">RandomResizedCrop 0.8–1.0</span>
+        <span style="font-family:'DM Mono',monospace; font-size:12px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:4px 12px; color:var(--text2);">GaussianBlur kernel=3</span>
+        <span style="font-family:'DM Mono',monospace; font-size:12px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:4px 12px; color:var(--text2);">Normalize ImageNet stats</span>
+      </div>
+    </div>
+
+    <div class="arch">
+      <h3>Project structure</h3>
+      <pre style="font-family:'DM Mono',monospace; font-size:12.5px; color:var(--text2); line-height:1.9; overflow-x:auto;">
+gender-classifier/
+├── <span style="color:var(--accent2);">final_faces.ipynb</span>        ← training notebook
+├── <span style="color:var(--accent2);">gender_cnn_model_final.pth</span> ← saved weights
+├── <span style="color:#7ab9f0;">app.py</span>                   ← Flask/FastAPI backend
+├── <span style="color:#8dcf79;">index.html</span>               ← this web app
+└── data/
+    ├── men/
+    └── women/</pre>
+    </div>
+
+    <div class="arch">
+      <h3>Backend integration (app.py)</h3>
+      <pre style="font-family:'DM Mono',monospace; font-size:12px; color:var(--text2); line-height:1.8; overflow-x:auto;"><span style="color:#8dcf79;">from</span> flask <span style="color:#8dcf79;">import</span> Flask, request, jsonify
+<span style="color:#8dcf79;">import</span> torch
+<span style="color:#8dcf79;">from</span> torchvision.transforms <span style="color:#8dcf79;">import</span> v2
+<span style="color:#8dcf79;">from</span> PIL <span style="color:#8dcf79;">import</span> Image
+<span style="color:#8dcf79;">import</span> io, base64
+
+app = Flask(__name__)
+model = GenderCNN()
+model.load_state_dict(torch.load(<span style="color:#f09ec3;">'gender_cnn_model_final.pth'</span>))
+model.eval()
+
+<span style="color:var(--accent2);">@app.route</span>(<span style="color:#f09ec3;">'/predict'</span>, methods=[<span style="color:#f09ec3;">'POST'</span>])
+<span style="color:#8dcf79;">def</span> predict():
+    img_bytes = request.data
+    img = Image.open(io.BytesIO(img_bytes)).convert(<span style="color:#f09ec3;">"RGB"</span>)
+    tensor = test_transforms(img).unsqueeze(0)
+    <span style="color:#8dcf79;">with</span> torch.no_grad():
+        out = model(tensor)
+        probs = torch.softmax(out, dim=1)[0]
+        pred = torch.argmax(probs).item()
+    <span style="color:#8dcf79;">return</span> jsonify({
+        <span style="color:#f09ec3;">'label'</span>: [<span style="color:#f09ec3;">'men'</span>, <span style="color:#f09ec3;">'women'</span>][pred],
+        <span style="color:#f09ec3;">'confidence'</span>: <span style="color:#8dcf79;">round</span>(probs[pred].item() * 100, 1)
+    })</pre>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>FaceID · Gender Classification CNN · Built with PyTorch &amp; pure HTML</footer>
+
+<script>
+const images = []; // { id, file, url, result }
+let idCounter = 0;
+
+function showTab(t) {
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function switchPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// Drag and drop
+const dropzone = document.getElementById('dropzone');
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+
+function handleFiles(files) {
+  [...files].forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const id = idCounter++;
+    const url = URL.createObjectURL(file);
+    images.push({ id, file, url, result: null });
+    renderCard(id, file.name, url);
+  });
+  if (images.length > 0) {
+    document.getElementById('results-area').style.display = 'block';
+    updateCount();
+  }
+}
+
+function renderCard(id, name, url) {
+  const grid = document.getElementById('image-grid');
+  const card = document.createElement('div');
+  card.className = 'img-card';
+  card.id = 'card-' + id;
+  card.innerHTML = `
+    <img src="${url}" alt="${name}" loading="lazy"/>
+    <div class="info">
+      <div class="filename">${name}</div>
+      <span class="badge badge-loading" id="badge-${id}">pending</span>
+      <div class="confidence-bar"><div class="confidence-fill" id="bar-${id}" style="width:0%"></div></div>
+      <div class="confidence-label" id="conf-${id}"></div>
+    </div>
+  `;
+  grid.appendChild(card);
+}
+
+function updateCount() {
+  const done = images.filter(i => i.result).length;
+  document.getElementById('action-count').textContent =
+    `${images.length} image${images.length !== 1 ? 's' : ''} · ${done} classified`;
+}
+
+async function runAll() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Running…';
+
+  // Process all pending images with simulated inference
+  for (const img of images) {
+    if (img.result) continue;
+    await simulateInference(img);
+    updateCount();
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg> Run predictions';
+
+  showSummary();
+}
+
+function simulateInference(img) {
+  return new Promise(resolve => {
+    // Show loading
+    document.getElementById('badge-' + img.id).className = 'badge badge-loading';
+    document.getElementById('badge-' + img.id).innerHTML = '<span class="spinner"></span> analyzing';
+
+    // Simulate async inference (replace with real fetch('/predict') call)
+    setTimeout(() => {
+      // Demo: use image name heuristics OR random for demo
+      const name = img.file.name.toLowerCase();
+      let label, conf;
+
+      if (name.includes('male') || name.includes('man') || name.includes('boy')) {
+        label = 'men'; conf = 75 + Math.random() * 22;
+      } else if (name.includes('female') || name.includes('woman') || name.includes('femme') || name.includes('girl')) {
+        label = 'women'; conf = 75 + Math.random() * 22;
+      } else {
+        // truly random for demo
+        label = Math.random() > 0.5 ? 'men' : 'women';
+        conf = 55 + Math.random() * 40;
+      }
+
+      img.result = { label, confidence: Math.round(conf * 10) / 10 };
+
+      const badge = document.getElementById('badge-' + img.id);
+      const bar = document.getElementById('bar-' + img.id);
+      const confEl = document.getElementById('conf-' + img.id);
+      const card = document.getElementById('card-' + img.id);
+
+      if (label === 'men') {
+        badge.className = 'badge badge-male';
+        badge.textContent = '♂ Male';
+        bar.className = 'confidence-fill male';
+        card.style.borderColor = 'rgba(78,157,232,0.3)';
+      } else {
+        badge.className = 'badge badge-female';
+        badge.textContent = '♀ Female';
+        bar.className = 'confidence-fill female';
+        card.style.borderColor = 'rgba(232,111,164,0.3)';
+      }
+
+      bar.style.width = conf + '%';
+      confEl.textContent = conf.toFixed(1) + '% confidence';
+      resolve();
+    }, 400 + Math.random() * 600);
+  });
+}
+
+function showSummary() {
+  const done = images.filter(i => i.result);
+  if (!done.length) return;
+
+  const males = done.filter(i => i.result.label === 'men').length;
+  const females = done.length - males;
+  const pct = Math.round(males / done.length * 100);
+
+  document.getElementById('sum-male').textContent = males;
+  document.getElementById('sum-female').textContent = females;
+  document.getElementById('sum-total').textContent = done.length;
+  document.getElementById('sum-male-pct').textContent = pct + '% of total';
+  document.getElementById('sum-female-pct').textContent = (100 - pct) + '% of total';
+  document.getElementById('donut-pct').textContent = pct + '%';
+
+  const circ = 2 * Math.PI * 52;
+  const fill = (pct / 100) * circ;
+  document.getElementById('donut-male').setAttribute('stroke-dasharray', `${fill} ${circ - fill}`);
+
+  document.getElementById('summary').style.display = 'block';
+}
+
+function clearAll() {
+  images.length = 0;
+  document.getElementById('image-grid').innerHTML = '';
+  document.getElementById('results-area').style.display = 'none';
+  document.getElementById('summary').style.display = 'none';
+  idCounter = 0;
+}
+
+// ----------- REAL BACKEND INTEGRATION (uncomment when Flask is running) -----------
+// async function realInference(img) {
+//   const arrayBuffer = await img.file.arrayBuffer();
+//   const resp = await fetch('http://localhost:5000/predict', {
+//     method: 'POST',
+//     body: arrayBuffer,
+//     headers: { 'Content-Type': img.file.type }
+//   });
+//   return await resp.json(); // { label: 'men'|'women', confidence: 87.3 }
+// }
+</script>
+</body>
+</html>
