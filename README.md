@@ -1,118 +1,179 @@
-# FaceID — Gender Classifier Web App
+# Face Gender Classifier Web App
 
-A web app built around your `final_faces.ipynb` CNN notebook that classifies face images as **Male** or **Female**.
+This project is a simple AI web application that classifies face images as **Male** or **Female** using a Convolutional Neural Network (CNN) built with PyTorch.
+
+The system combines:
+
+* A trained deep learning model
+* A Python backend (Flask API)
+* A frontend web interface (HTML + JavaScript)
 
 ---
 
-## Project Structure
+## 🚀 What This Project Does
+
+A user uploads an image in the browser →
+The image is sent to a backend server →
+The server runs the trained model →
+The prediction is sent back and displayed on the page.
+
+---
+
+## 🧠 Model
+
+* Built using a custom CNN (3 convolutional blocks)
+* Trained in PyTorch (`final_faces.ipynb`)
+* Input size: 224 × 224 RGB images
+* Output: 2 classes → `men` or `women`
+* Loss function: CrossEntropyLoss
+* Optimizer: Adam
+
+The trained model is saved as:
+
+```
+gender_cnn_model_final.pth
+```
+
+---
+
+## 🏗️ Project Structure
 
 ```
 gender-classifier/
-├── index.html                   ← Frontend web app (works standalone)
-├── app.py                       ← Flask backend (connects to your .pth model)
-├── requirements.txt
-├── gender_cnn_model_final.pth   ← Your trained model (copy here)
-└── data/
-    ├── men/
-    └── women/
+├── index.html                 # Frontend (user interface)
+├── app.py                     # Backend (Flask API)
+├── requirements.txt           # Python dependencies
+├── gender_cnn_model_final.pth # Trained model
+└── data/                      # Training dataset
 ```
 
 ---
 
-## Quick Start
+## ⚙️ How to Run the Project
 
 ### 1. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Copy your trained model
-```bash
-cp path/to/gender_cnn_model_final.pth .
+### 2. Make sure the model file is in the project folder
+
+```
+gender_cnn_model_final.pth
 ```
 
-### 3. Start the Flask backend
+### 3. Start the backend server
+
 ```bash
 python app.py
 ```
 
-### 4. Open the web app
-Open `index.html` in your browser — or serve it:
+This will start a local server at:
+
+```
+http://localhost:5000
+```
+
+### 4. Open the frontend
+
+You can either:
+
+* Open `index.html` directly
+  or
+
 ```bash
 python -m http.server 8080
-# then visit http://localhost:8080
+```
+
+Then go to:
+
+```
+http://localhost:8080
 ```
 
 ---
 
-## Connecting Frontend to Backend
+## 🔗 Connecting Frontend to Backend
 
-In `index.html`, find the **`simulateInference`** function and replace it with **`realInference`**:
+By default, the frontend uses a **fake prediction function** (`simulateInference`) for testing.
+
+To use the real model:
+
+Find this line in `index.html`:
 
 ```javascript
-// In the runAll() function, change:
 await simulateInference(img);
-// to:
+```
+
+Replace it with:
+
+```javascript
 const result = await realInference(img);
 img.result = result;
 updateCardUI(img);
 ```
 
-The `realInference` function is already written and commented out at the bottom of the `<script>` tag:
+### What this does
 
-```javascript
-async function realInference(img) {
-  const arrayBuffer = await img.file.arrayBuffer();
-  const resp = await fetch('http://localhost:5000/predict', {
-    method: 'POST',
-    body: arrayBuffer,
-    headers: { 'Content-Type': img.file.type }
-  });
-  return await resp.json(); // { label: 'men'|'women', confidence: 87.3 }
-}
-```
+* Sends the image to the backend (`/predict`)
+* The backend runs the model
+* Returns a real prediction
+* Displays the result in the UI
 
 ---
 
-## API Endpoints
+## 🌐 API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | Server status check |
-| POST | `/predict` | Single image (raw bytes in body) |
-| POST | `/predict-batch` | Multiple images (multipart/form-data) |
+### GET `/health`
 
-### Example with curl
-```bash
-curl -X POST http://localhost:5000/predict \
-  --data-binary @face.jpg \
-  -H "Content-Type: image/jpeg"
-```
+Check if the server is running.
 
-### Response
+---
+
+### POST `/predict`
+
+Send a single image and get a prediction.
+
+* Input: raw image bytes
+* Output:
+
 ```json
 {
   "label": "women",
-  "confidence": 91.4,
-  "probabilities": {
-    "men": 8.6,
-    "women": 91.4
-  }
+  "confidence": 91.4
 }
 ```
 
 ---
 
-## Model Details
+## 🔁 How the System Works (End-to-End)
 
-| Property | Value |
-|----------|-------|
-| Architecture | Custom 3-block CNN |
-| Input | 224 × 224 RGB |
-| Classes | men, women |
-| Optimizer | Adam (lr=0.001) |
-| Loss | CrossEntropyLoss |
-| Dropout | 0.5 |
-| Framework | PyTorch |
+1. User uploads an image in the browser
+2. JavaScript converts the image into bytes
+3. The image is sent to the Flask backend using a POST request
+4. The backend:
+
+   * loads the trained model
+   * preprocesses the image
+   * runs prediction
+5. The backend returns a JSON response
+6. The frontend displays the result
+
+---
+
+## 📌 Notes & Limitations
+
+* The model only predicts two classes: `men` and `women`
+* It assumes the input image already contains a face
+* Performance depends on the training dataset
+
+---
+
+## 💬 About This Project
+
+The CNN model and training pipeline were built from scratch.
+
+The web interface and API structure were initially scaffolded with AI assistance, then reviewed and understood to connect the frontend and backend properly.
 
 ---
