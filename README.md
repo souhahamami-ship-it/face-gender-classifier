@@ -116,26 +116,3 @@ curl -X POST http://localhost:5000/predict \
 | Framework | PyTorch |
 
 ---
-
-## Deployment Options
-
-### Local (development)
-```bash
-python app.py
-```
-
-### Production with Gunicorn
-```bash
-pip install gunicorn
-gunicorn -w 2 -b 0.0.0.0:5000 app:app
-```
-
-### Docker
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5000", "app:app"]
-```
